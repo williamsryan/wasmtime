@@ -1322,7 +1322,17 @@ impl<'func, I: VCodeInst> Lower<'func, I> {
     ///
     /// For more information see [`Lower::get_value_as_source_or_const`].
     pub fn get_input_as_source_or_const(&self, ir_inst: Inst, idx: usize) -> NonRegInput {
+        use log::info;
+
         let val = self.input_as_value(ir_inst, idx);
+
+        let source = self.get_value_as_source_or_const(val);
+
+        info!(
+            "Lowering input: Wasm value {:?} → Lowered input {:?}",
+            val, source
+        );
+
         self.get_value_as_source_or_const(val)
     }
 

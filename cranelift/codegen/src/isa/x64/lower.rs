@@ -223,9 +223,28 @@ fn matches_small_constant_shift(ctx: &mut Lower<Inst>, spec: InsnInput) -> Optio
 ///
 /// Note: the 32-bit offset in Cranelift has to be sign-extended, which maps x86's behavior.
 fn lower_to_amode(ctx: &mut Lower<Inst>, spec: InsnInput, offset: i32) -> Amode {
+    use log::info;
+
     let flags = ctx
         .memflags(spec.insn)
         .expect("Instruction with amode should have memflags");
+
+    let amode = {
+        // let flags = ctx
+        //     .memflags(spec.insn)
+        //     .expect("Instruction with amode should have memflags");
+
+        let input = ctx
+            .put_input_in_regs(spec.insn, spec.input)
+            .only_reg()
+            .expect("Expected a single register, but found multiple");
+        Amode::imm_reg(offset, input).with_flags(flags)
+    };
+
+    info!(
+        "Lowering memory access: Wasm {:?} → Machine {:?}",
+        spec, amode
+    );
 
     // We now either have an add that we must materialize, or some other input; as well as the
     // final offset.
@@ -313,7 +332,19 @@ impl LowerBackend for X64Backend {
     type MInst = Inst;
 
     fn lower(&self, ctx: &mut Lower<Inst>, ir_inst: IRInst) -> Option<InstOutput> {
-        isle::lower(ctx, self, ir_inst)
+        use log::info;
+
+        // Log the Wasm instruction before lowering
+        info!("Lowering Wasm IR instruction: {:?}", ir_inst);
+
+        let lowered_inst = isle::lower(ctx, self, ir_inst);
+
+        // Log the resulting x86 instruction(s)
+        if let Some(ref output) = lowered_inst {
+            info!("Lowered to x86 instruction: {:?}", output);
+        }
+
+        lowered_inst
     }
 
     fn lower_branch(
